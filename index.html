@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>Tutorial: Hello Dojo!</title>
+	<!-- set Dojo configuration, load Dojo -->
+	<script>
+		dojoConfig= {
+			has: {
+				"dojo-firebug": true
+			},
+			parseOnLoad: false,
+			foo: "bar",
+			async: true
+		};
+	</script>
+	<link href='http://fonts.googleapis.com/css?family=Ubuntu' rel='stylesheet' type='text/css'>
+	<link rel="stylesheet" href="//ajax.googleapis.com/ajax/libs/dojo/1.7.2/dijit/themes/claro/claro.css"/>
+	<!-- Raphael must be loaded first, doesn't support AMD -->
+	<script type="text/javascript" src="raphael.js"></script>
+	<script src="//ajax.googleapis.com/ajax/libs/dojo/1.7.2/dojo/dojo.js"></script>
+	<style type="text/css">
+		body {
+			font-family: 'Ubuntu', sans-serif;
+		}
+		.claro h2.dijitMenuBar {
+			margin: -8px -8px 0px -8px;
+			border-top: none;
+			border-right: none;
+			border-left: none;
+			text-align: center;
+		}
+	</style>
+</head>
+<body class="claro">
+<div data-dojo-type="dijit.MenuBar" id="navMenu">
+    <div data-dojo-type="dijit.PopupMenuBarItem">
+        <span>File</span>
+        <div data-dojo-type="dijit.DropDownMenu" id="fileMenu">
+            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('file 1');}">New</div>
+            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('file 2');}">Save</div>
+        </div>
+    </div>
+    <div data-dojo-type="dijit.PopupMenuBarItem">
+        <span>Edit</span>
+        <div data-dojo-type="dijit.DropDownMenu" id="editMenu">
+            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('edit 1');}">Edit #1</div>
+            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('edit 2');}">Edit #2</div>
+        </div>
+    </div>
+</div>
+<div id="main" data-dojo-type="dijit.layout.BorderContainer" data-dojo-props='gutters:true, style:"`-height:500px;"'>
+	<div data-dojo-type="dijit.layout.ContentPane" data-dojo-props='region:"top", splitter:false'>This test is to make sure nested layout elements work fine in regards to double borders etc. You need a screen with a very high resolution to not get cramped tabs and other weird visual effects </div>
+	<div id="mainSplit" data-dojo-type="dijit.layout.BorderContainer" data-dojo-props='liveSplitters:false, design:"sidebar",
+		region:"center"'>
+		<div id="leftAccordion" data-dojo-type="dijit.layout.ContentPane"
+			data-dojo-props='minSize:20, style:"width: 55px;", region:"leading", splitter:true'>
+			<h2 class="dijitMenuBar">Tools</h2>
+			<div style="
+				margin-top: 8px;
+				background-image: url(images/tools.jpg);
+				width: 55px;
+				height: 50px;
+				background-position: -76px -151px;
+				float: left;
+				outline: 3px solid orange;
+			"></div>
+		</div>
+		<div id="centerSplit" data-dojo-type="dijit.layout.TabContainer" data-dojo-props='liveSplitters:false, region:"center"'>
+	        <div data-dojo-type="dijit.layout.ContentPane" title="candy-wrapper.wr" selected="true">
+				<div id="paper"></div>
+	        </div>
+		</div>
+		<div data-dojo-type="dijit.layout.AccordionContainer" data-dojo-props='region:"trailing", splitter:true, style:"width: 200px;"'>
+			<div data-dojo-type="dijit.layout.ContentPane" title="Information">
+				Hi!
+			</div>
+			<div data-dojo-type="dijit.layout.ContentPane" title="History">
+				Hi!
+			</div>
+			<div data-dojo-type="dijit.layout.ContentPane" title="Object Properties">
+				Hi!
+			</div>
+			<div data-dojo-type="dijit.layout.ContentPane" title="Preview">
+				Hi!
+			</div>
+		</div>
+</div>
+<script type="text/javascript">
+var objects = [];
+var paper;
+require(['dojo/_base/declare', "dojo/_base/lang"], function(declare, lang){
+	declare('app.Object', null, {
+		constructor: function (args) {
+			declare.safeMixin(this, args);
+
+			this.active = false;
+			var that = this;
+			this.elementTransform = {
+				t: [0,0],
+				s: 1
+			}
+			this.element.click(function(evt) {
+				that.toggleBBow();
+			});
+			this.element.drag(function (x, y, evt) {
+				var dx, dy;
+
+				//-- To know if this object is active
+				if (!that.isActive()) {
+					return;
+				}
+
+				if (typeof that.dragX === "undefined") {
+					that.dragX = 0;
+					that.dragY = 0;
+				}
+
+				dx = x - that.dragX;
+				dy = y - that.dragY;
+
+				//-- Move the object and bounding box
+				tx = that.lastelementTransform.t[0] + x;
+				ty = that.lastelementTransform.t[1] + y;
+				this.transform("t" + tx + "," + ty + "s" + that.elementTransform.s);
+				that.elementTransform.t = [tx, ty];
+
+				that.bbox.translate(dx, dy);
+				that.p1.translate(dx, dy);
+				that.p2.translate(dx, dy);
+				that.p3.translate(dx, dy);
+				that.p4.translate(dx, dy);
+
+				that.dragX = x;
+				that.dragY = y;
+				that.dragStop = true;
+			}, function (x, y, evt) {
+				that.lastelementTransform = lang.clone(that.elementTransform);
+			}, function (x, y) {
+				delete that.dragX;
+				delete that.dragY;
+				// that.elementTransform.t = [x, y];
+			});
+		},
+		isActive: function () {
+			return this.active && typeof this.bbox !== "undefined";
+		},
+		toggleBBow: function () {
+			if (typeof this.dragStop !== "undefined") {
+				delete this.dragStop;
+				return;
+			}
+			var that = this;
+			if (typeof this.bbox === "undefined") {
+				var size = this.element.getBBox();
+				this.bbox = this.element.paper.rect(size.x, size.y, size.width, size.height);
+				this.bbox.attr({
+					"stroke": "black",
+					"stroke-opacity": 1.0
+				});
+				this.p1 = this.element.paper.rect(size.x - 5, size.y - 5, 10, 10);
+				this.p1.attr({
+					"fill": "black",
+					"stroke-width": 0
+				});
+				this.p2 = this.element.paper.rect(size.x + size.width - 5, size.y - 5, 10, 10);
+				this.p2.attr({
+					"fill": "black",
+					"stroke-width": 0
+				});
+				//-- Bottom Right
+				this.p3 = this.element.paper.rect(size.x + size.width - 5, size.y + size.height - 5, 10, 10);
+				this.p3.attr({
+					"fill": "black",
+					"stroke-width": 0
+				});
+				//-- Bottom Left
+				this.p4 = this.element.paper.rect(size.x - 5, size.y + size.height - 5, 10, 10);
+				this.p4.attr({
+					"fill": "black",
+					"stroke-width": 0
+				});
+				this.p4.drag(function (x, y) {
+					var dx, dy
+					if(typeof that.p4Dx === "undefined") {
+						that.p4Dx = 0;
+						that.p4Dy = 0;
+					}
+					console.log(that.p4Dx, that.p4Dy, x, y);
+					dx = Math.abs(x);
+					dy = Math.abs(y);
+					//console.log(that.element.);	
+					var size = ((dx * dx) + (dy * dy)) / 2 * 0.25;
+					that.elementTransform.s = size;
+					that.element.transform("t" + that.elementTransform.t.join(",") + "s" + size);
+					console.log("t" + that.elementTransform.t.join(",") + "s" + size);
+					//that.p4Dx = x;
+					//that.p4Dy = y;
+				}, function (x, y) {
+					that.p4Dx = x;
+					that.p4Dy = y;
+					that.lastelementTransform = lang.clone(that.elementTransform);
+				}, function (x, y) {
+					delete that.p4Dx;
+					delete that.p4Dy;
+				});
+				this.active = true;
+			} else {
+				this.bbox.remove();
+				this.p1.remove();
+				this.p2.remove();
+				this.p3.remove();
+				this.p4.remove();
+				delete this.bbox;
+				delete this.p1;
+				delete this.p2;
+				delete this.p3;
+				delete this.p4;
+			}
+		}
+	})
+});
+
+function resizeEditor (evt) {
+	require([
+		"dojo/window",
+		"dojo/dom-geometry"], 
+	function (win, domGeom) {
+		var main = dijit.byId("main");
+		var box = main._contentBox;
+		var winbox = win.getBox();
+		var navbox = domGeom.position(dojo.byId("navMenu"));
+		var height = winbox.h - (navbox.h + (navbox.y * 2));
+		var width = winbox.w - 16;
+
+		main.resize({w: box.w, h: height, l: box.l, t: box.t});
+	});
+}
+
+function init() {
+	var paperSize = {
+		pixels: [816, 1056],
+		inches: [8.5, 11]
+	}
+	// Creates canvas 320 × 200 at 10, 50
+	paper = Raphael("paper", paperSize.pixels[0], paperSize.pixels[1]);
+
+	// Creates circle at x = 50, y = 40, with radius 10
+	var circle = paper.circle(50, 40, 10);
+	// Sets the fill attribute of the circle to red (#f00)
+	circle.attr("fill", "#f00");
+
+	// Sets the stroke attribute of the circle to white
+	//circle.attr("stroke", "#fff");
+
+	objects.push(new app.Object({
+		element: circle
+	}));
+}
+require([
+		"dojo/parser", 
+		"dojo/dom", 
+		"dojo/_base/xhr",
+		"dojo/on",
+		"dojo/_base/event",
+		"dojo/window",
+		"dojo/dom-geometry",
+		"dijit/MenuBar", 
+		"dijit/PopupMenuBarItem", 
+		"dijit/Menu", 
+		"dijit/MenuItem",
+		"dijit/layout/BorderContainer",
+		"dijit/layout/ContentPane",
+		"dijit/layout/AccordionContainer",
+		"dijit/layout/TabContainer",
+		"dojo/domReady!"
+	], function(
+		parser, 
+		dom,
+		xhr,
+		on,
+		event,
+		win,
+		domGeom
+	) {
+	parser.parse();
+	init();
+
+	
+	resizeEditor();
+
+	on(window, "resize", resizeEditor);
+
+	on(document.body, "keydown", function (evt) {
+		if (evt.ctrlKey && evt.keyCode === 83) {
+			dojo.stopEvent(evt);
+			xhr.post({
+				url: 'save.php',
+				timeout: 3000,
+				content: { svg:dom.byId("paper").innerHTML },
+				load: function (resp) {
+					console.log(resp);
+				}
+			});
+		}
+	});
+
+});
+</script>
+</body>
+</html>
