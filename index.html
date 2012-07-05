@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<title>Tutorial: Hello Dojo!</title>
+	<title>Wrapper Software</title>
 	<!-- set Dojo configuration, load Dojo -->
 	<script>
 		dojoConfig= {
@@ -89,7 +89,7 @@
 <script type="text/javascript">
 var objects = [];
 var paper;
-require(['dojo/_base/declare', "dojo/_base/lang"], function(declare, lang){
+require(['dojo/_base/declare', "dojo/_base/lang", "dojo/dom-geometry"], function(declare, lang, domGeom){
 	declare('app.Object', null, {
 		constructor: function (args) {
 			declare.safeMixin(this, args);
@@ -100,7 +100,7 @@ require(['dojo/_base/declare', "dojo/_base/lang"], function(declare, lang){
 				t: [0,0],
 				s: 1
 			}
-			this.element.click(function(evt) {
+			this.element.click(function (evt) {
 				that.toggleBBow();
 			});
 			this.element.drag(function (x, y, evt) {
@@ -180,8 +180,13 @@ require(['dojo/_base/declare', "dojo/_base/lang"], function(declare, lang){
 					"fill": "black",
 					"stroke-width": 0
 				});
-				this.p4.drag(function (x, y) {
-					var dx, dy
+				this.p4.drag(function (x, y, mouseX, mouseY) {
+					var dx, dy;
+					var paperBox = domGeom.position(dojo.byId("paper"));
+					console.log(x, y, paperBox.x - mouseX, paperBox.y - mouseY, paperBox);
+					var relX = paperBox.x - mouseX;
+					var relY = paperBox.y - mouseY;
+					/*
 					if(typeof that.p4Dx === "undefined") {
 						that.p4Dx = 0;
 						that.p4Dy = 0;
@@ -191,14 +196,27 @@ require(['dojo/_base/declare', "dojo/_base/lang"], function(declare, lang){
 					dy = Math.abs(y);
 					//console.log(that.element.);	
 					var size = ((dx * dx) + (dy * dy)) / 2 * 0.25;
-					that.elementTransform.s = size;
+					size += that.lastelementTransform.s;
 					that.element.transform("t" + that.elementTransform.t.join(",") + "s" + size);
-					console.log("t" + that.elementTransform.t.join(",") + "s" + size);
+					that.elementTransform.s = size;
+					console.log(size);
+					*/
+
+					var centerX = that.p4Box.x2 - that.p4Box.x;
+					var centerY = that.p4Box.y2 - that.p4Box.y;
+					var dx = Math.abs(centerX - x);
+					var dy = Math.abs(centerY - y);
+					var size = Math.sqrt((dx * dx) + (dy * dy)) / 10;
+					that.element.transform("t" + that.elementTransform.t.join(",") + "s" + Math.abs(size));
+					that.elementTransform.s = size;
+					console.log(centerX, centerY, x, y, size);
 					//that.p4Dx = x;
 					//that.p4Dy = y;
 				}, function (x, y) {
 					that.p4Dx = x;
 					that.p4Dy = y;
+					that.p4Box = that.element.getBBox();
+					//-- Have to clone, if not the properties would link instead
 					that.lastelementTransform = lang.clone(that.elementTransform);
 				}, function (x, y) {
 					delete that.p4Dx;
