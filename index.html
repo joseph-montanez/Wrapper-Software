@@ -45,7 +45,7 @@
         <span>Edit</span>
         <div data-dojo-type="dijit.DropDownMenu" id="editMenu">
             <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('edit 1');}">Edit #1</div>
-            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:function(){alert('edit 2');}">Edit #2</div>
+            <div data-dojo-type="dijit.MenuItem" data-dojo-props="onClick:addCircle">Add Circle</div>
         </div>
     </div>
 </div>
@@ -89,73 +89,93 @@
 <script type="text/javascript">
 var objects = [];
 var paper;
+
+function addCircle() {
+	new app.Circle({radius: 15});
+}
+
 require(['dojo/_base/declare', "dojo/_base/lang", "dojo/dom-geometry"], function(declare, lang, domGeom){
 	declare('app.Object', null, {
-		constructor: function (args) {
-			declare.safeMixin(this, args);
+		active: false,
+		//-- Position
+		elementTransform: false,
+		//-- Drag Properties
+		dragX: 0,
+		dragY: 0,
+		dragStop: false,
 
-			this.active = false;
-			var that = this;
-			this.elementTransform = {
+		bbox: false,
+		p1: false,
+		p2: false,
+		p3: false,
+
+		//-- Bottom Left Transform Point
+		p4Dx: 0,
+		p4Dy: 0,
+		p4Box: 0,
+		p4: false,
+
+		lastelementTransform: false,
+
+		init: function (args) {
+			this.elementTransform =  {
 				t: [0,0],
 				s: 1
-			}
-			this.element.click(function (evt) {
-				that.toggleBBow();
-			});
+			},
+			declare.safeMixin(this, args);
+			this.element.click(lang.hitch(this, function (evt) {
+				this.toggleBBow();
+			}));
 			this.element.drag(function (x, y, evt) {
-				var dx, dy;
+				console.log('drag-start');
+				var dx, dy, tx, ty;
 
 				//-- To know if this object is active
-				if (!that.isActive()) {
+				if (!this.isActive()) {
 					return;
 				}
 
-				if (typeof that.dragX === "undefined") {
-					that.dragX = 0;
-					that.dragY = 0;
-				}
-
-				dx = x - that.dragX;
-				dy = y - that.dragY;
+				dx = x - this.dragX;
+				dy = y - this.dragY;
 
 				//-- Move the object and bounding box
-				tx = that.lastelementTransform.t[0] + x;
-				ty = that.lastelementTransform.t[1] + y;
-				this.transform("t" + tx + "," + ty + "s" + that.elementTransform.s);
-				that.elementTransform.t = [tx, ty];
+				tx = this.lastelementTransform.t[0] + x;
+				ty = this.lastelementTransform.t[1] + y;
+				console.log(this.elementTransform.t, this.elementTransform.s);
+				this.element.transform("T" + tx + "," + ty + "s" + this.elementTransform.s);
+				this.elementTransform.t[0] = tx
+				this.elementTransform.t[1] = ty;
 
-				that.bbox.translate(dx, dy);
-				that.p1.translate(dx, dy);
-				that.p2.translate(dx, dy);
-				that.p3.translate(dx, dy);
-				that.p4.translate(dx, dy);
+				this.bbox.translate(dx, dy);
+				this.p1.translate(dx, dy);
+				this.p2.translate(dx, dy);
+				this.p3.translate(dx, dy);
+				this.p4.translate(dx, dy);
 
-				that.dragX = x;
-				that.dragY = y;
-				that.dragStop = true;
+				this.dragX = x;
+				this.dragY = y;
+				this.dragStop = true;
 			}, function (x, y, evt) {
-				that.lastelementTransform = lang.clone(that.elementTransform);
+				this.lastelementTransform = lang.clone(this.elementTransform);
 			}, function (x, y) {
-				delete that.dragX;
-				delete that.dragY;
-				// that.elementTransform.t = [x, y];
-			});
+				this.dragX = 0;
+				this.dragY = 0;
+				// this.elementTransform.t = [x, y];
+			}, this, this, this);
 		},
 		isActive: function () {
-			return this.active && typeof this.bbox !== "undefined";
+			return this.active && this.bbox !== false;
 		},
 		scale: function (size) {
 			this.elementTransform.s = size;
-			this.element.transform("t" + this.elementTransform.t.join(",") + "s" + size);
+			this.element.transform("T" + this.elementTransform.t.join(",") + "s" + size);
 		},
 		toggleBBow: function () {
-			if (typeof this.dragStop !== "undefined") {
-				delete this.dragStop;
+			if (this.dragStop !== false) {
+				this.dragStop = false;
 				return;
 			}
-			var that = this;
-			if (typeof this.bbox === "undefined") {
+			if (this.bbox === false) {
 				var size = this.element.getBBox();
 				this.bbox = this.element.paper.rect(size.x, size.y, size.width, size.height);
 				this.bbox.attr({
@@ -189,24 +209,27 @@ require(['dojo/_base/declare', "dojo/_base/lang", "dojo/dom-geometry"], function
 					var paperBox = domGeom.position(dojo.byId("paper"));
 					var mouseRelX = mouseX - paperBox.x;
 					var mouseRelY = mouseY - paperBox.y;
-					var centerX = (that.p4Box.x + (that.p4Box.width / 2));// + that.elementTransform.t[0];
-					var centerY = (that.p4Box.y + (that.p4Box.height / 2));// + that.elementTransform.t[1];
+					var centerX = (this.p4Box.x + (this.p4Box.width / 2));// + this.elementTransform.t[0];
+					var centerY = (this.p4Box.y + (this.p4Box.height / 2));// + this.elementTransform.t[1];
 
 					var dx = Math.abs(centerX - mouseRelX);
 					var dy = Math.abs(centerY - mouseRelY);
 					var size = Math.sqrt((dx * dx) + (dy * dy));
-					that.element.transform("t" + that.elementTransform.t.join(",") + "s" + size);
-					that.elementTransform.s = size;
+					this.element.transform("T" + this.elementTransform.t.join(",") + "s" + size);
+					this.elementTransform.s = size;
 				}, function (x, y) {
-					that.p4Dx = x;
-					that.p4Dy = y;
-					that.p4Box = that.element.getBBox();
+					this.p4Dx = x;
+					this.p4Dy = y;
+					this.p4Box = this.element.getBBox();
 					//-- Have to clone, if not the properties would link instead
-					that.lastelementTransform = lang.clone(that.elementTransform);
+					this.lastelementTransform = lang.clone(this.elementTransform);
 				}, function (x, y) {
-					delete that.p4Dx;
-					delete that.p4Dy;
-				});
+					this.p4Dx = 0;
+					this.p4Dy = 0;
+					//-- TODO this needs to be better....
+					this.toggleBBow();
+					this.toggleBBow();
+				}, this, this, this);
 				this.active = true;
 			} else {
 				this.bbox.remove();
@@ -214,14 +237,31 @@ require(['dojo/_base/declare', "dojo/_base/lang", "dojo/dom-geometry"], function
 				this.p2.remove();
 				this.p3.remove();
 				this.p4.remove();
-				delete this.bbox;
-				delete this.p1;
-				delete this.p2;
-				delete this.p3;
-				delete this.p4;
+
+				this.bbox = false;
+				this.p1 = false;
+				this.p2 = false;
+				this.p3 = false;
+				this.p4 = false;
 			}
 		}
-	})
+	});
+	declare('app.Circle', app.Object, {
+		radius: 10,
+		constructor: function (args) {
+			declare.safeMixin(this, args);
+
+			var circle = paper.circle(50, 40, 1);
+			circle.attr("fill", "#999");
+
+			this.element = circle;
+			this.init(args);
+
+			this.scale(this.radius);
+			objects.push(this);
+
+		}
+	});
 });
 
 function resizeEditor (evt) {
@@ -256,7 +296,8 @@ function init() {
 	// Sets the stroke attribute of the circle to white
 	//circle.attr("stroke", "#fff");
 
-	var obj = new app.Object({
+	var obj = new app.Object();
+	obj.init({
 		element: circle
 	});
 	obj.scale(10);
